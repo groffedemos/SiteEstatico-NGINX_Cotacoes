@@ -8,12 +8,13 @@ on:
 
 env:
   IMAGEM_DOCKERHUB: ${{ secrets.DOCKERHUB_USERNAME }}/site-indicadores-economia-2021
+  NOME_WEBAPP: groffeindicadores
 
 jobs:
 
   build-dockerhub:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
     - uses: actions/checkout@v2
@@ -30,3 +31,20 @@ jobs:
         docker build . --file Dockerfile --tag ${{ env.IMAGEM_DOCKERHUB }}:latest
         docker tag ${{ env.IMAGEM_DOCKERHUB }}:latest ${{ env.IMAGEM_DOCKERHUB }}:$GITHUB_RUN_NUMBER
         docker push --all-tags ${{ env.IMAGEM_DOCKERHUB }}
+
+  deployment-azwebapp:
+    needs: [build-dockerhub]
+
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Azure Login - Conectando com Credenciais no Azure
+      uses: Azure/login@v1.1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Azure WebApp - Deployment da Aplicacao
+      uses: Azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.NOME_WEBAPP }}
+        images: '${{ env.IMAGEM_DOCKERHUB }}:${{ github.run_number }}'
